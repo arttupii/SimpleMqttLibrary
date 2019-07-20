@@ -1,0 +1,28 @@
+#######################################
+# Syntax Coloring Map For WiFi101OTA
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+send	KEYWORD2
+begin	KEYWORD2
+Commands	KEYWORD2
+
+SimpleMQTT	KEYWORD2
+publish	KEYWORD2
+parse	KEYWORD2
+getBuffer	KEYWORD2
+handleSubscribeEvents	KEYWORD2
+handlePublishEvents	KEYWORD2
+compareTopic	KEYWORD2
+
+
+#######################################
+# Constants (LITERAL1)
+#######################################
