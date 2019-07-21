@@ -2,9 +2,10 @@
 #include<Arduino.h>
 #include <EspNowFloodingMesh.h>
 
-SimpleMQTT::SimpleMQTT(int ttl) {
+SimpleMQTT::SimpleMQTT(int ttl, const char *deviceName) {
   buffer[0] = 0;
   this->ttl = ttl;
+  myDeviceName = deviceName;
 }
 
 SimpleMQTT::~SimpleMQTT() {
@@ -18,7 +19,7 @@ bool SimpleMQTT::compareTopic(const char* topic, const char* deviceName, const c
 
 bool SimpleMQTT::publish(const char* deviceName, const char* parameterName, const char *value) {
   char *p = buffer;
-  p += sprintf(p, "MQTT\nP:%s%s:%s\n", deviceName, parameterName, value);
+  p += sprintf(p, "MQTT %s\nP:%s%s:%s\n", myDeviceName.c_str(), deviceName, parameterName, value);
   return send(buffer, (int)(p - buffer) + 1, 0);
 }
 
@@ -27,23 +28,49 @@ bool SimpleMQTT::subscribeTopic(const char* devName, const char *valName) {
   sprintf(buffer, "%s%s", devName, valName);
   addtopicToVector(buffer);
 
-  p += sprintf(p, "MQTT\nS:%s%s\n", devName, valName);
+  p += sprintf(p, "MQTT %s\nS:%s%s\n", myDeviceName.c_str(), devName, valName);
   bool ret = send(buffer, (int)(p - buffer) + 1, 0);
 
   return ret;
 }
 
-void SimpleMQTT::addtopicToVector(char *topic) {
+bool SimpleMQTT::getTopic(const char* devName, const char *valName) {
+  sprintf(buffer, "MQTT %s\nG:%s%s\n", myDeviceName.c_str(), devName, valName);
+  bool ret = send(buffer, strlen(buffer) + 1, 0);
+
+  return ret;
+}
+
+bool SimpleMQTT::unsubscribeTopic(const char* devName, const char *valName) {
+  char *p = buffer;
+  sprintf(buffer, "%s%s", devName, valName);
+  removeTopicFomVector(buffer);
+
+  p += sprintf(p, "MQTT %s\nU:%s%s\n", myDeviceName.c_str(), devName, valName);
+  bool ret = send(buffer, (int)(p - buffer) + 1, 0);
+
+  return ret;
+}
+void SimpleMQTT::addtopicToVector(const char *topic) {
   int l = strlen(topic) + 1;
   char *b = (char*)malloc(l);
   memcpy(b, topic, l);
   topicVector.push_back(b);
 }
 
+void SimpleMQTT::removeTopicFomVector(const char *topic) {
+  topicVector.remove_if([topic](char *t)->bool{
+    if (strcmp(t, topic) == 0) {
+      free(t);
+      return true;
+    }
+    return false;
+  });
+}
 
 void SimpleMQTT::parse(const unsigned char *data, int size, uint32_t replyId, bool subscribeSequance) {
   this->replyId = replyId;
-  if (data[0] == 'M' && data[1] == 'Q' && data[2] == 'T' && data[3] == 'T' && data[4] == '\n') {
+  if (data[0] == 'M' && data[1] == 'Q' && data[2] == 'T' && data[3] == 'T' && (data[4] == '\n'||data[4] == ' ')) {
     int i = 0;
     int s = 0;
     Serial.println((const char*)data);
@@ -63,9 +90,10 @@ const char* SimpleMQTT::getBuffer() {
   return buffer;
 }
 
-void SimpleMQTT::handleSubscribeEvents(void (cb)(const char *, const char*)) {
+void SimpleMQTT::handleSubscribeAndGetEvents(void (cb)(const char *, const char*)) {
   subscribeCallBack = cb;
 }
+
 void SimpleMQTT::handlePublishEvents(void (cb)(const char *, const char*)) {
   publishCallBack = cb;
 }
@@ -90,7 +118,7 @@ bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
 }
 
 void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
-  if (c[0] == 'P' || c[0] == 'M' | c[1] == ':') { //publish
+  if (c[0] == 'P' && c[1] == ':') { //publish
     char topic[30];
     char value[30];
     int i = 2;
