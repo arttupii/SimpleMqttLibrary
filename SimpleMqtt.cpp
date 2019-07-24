@@ -145,6 +145,98 @@ bool SimpleMQTT::_shutter(Mqtt_cmd cmd, const char* name, MQTT_shutter value){
    }
    return false;
 }
+
+
+float toFloat(const char* v) {
+  float ret;
+  sscanf(v, "%f", &ret);
+  return ret;
+}
+int toInt(const char* v) {
+  int ret;
+  sscanf(v, "%d", &ret);
+  return ret;
+}
+
+bool SimpleMQTT::_rawIf(MQTT_IF ifType, const char* type, const char* name){
+  if(ifType==SET) {
+    snprintf(buffer, sizeof(buffer), "%s/%s/%s/set", myDeviceName.c_str(), type, name);
+  } else { //VALUE
+    snprintf(buffer, sizeof(buffer), "%s/%s/%s/value", myDeviceName.c_str(), type, name);
+  }
+  return strcmp(_topic, buffer) == 0;
+}
+
+bool SimpleMQTT::_ifSwitch(MQTT_IF ifType, const char* name, void (*cb)(MQTT_switch /*value*/)){
+  if(!_rawIf( ifType, "switch", name)) return false;
+  if(strcmp(_value, "on")==0) cb(SWITCH_ON);
+  else cb(SWITCH_OFF);
+  return false;
+}
+
+bool SimpleMQTT::_ifTemp(MQTT_IF ifType, const char* name, void (*cb)(float /*value*/)){
+  if(!_rawIf( ifType, "temp", name)) return false;
+  return toFloat(_value);
+}
+bool SimpleMQTT::_ifHumidity(MQTT_IF ifType, const char* name, void (*cb)(float /*value*/)){
+  if(!_rawIf( ifType, "humidity", name)) return false;
+  return toFloat(_value);
+}
+bool SimpleMQTT::_ifTrigger(MQTT_IF ifType, const char* name, void (*cb)(MQTT_trigger /*value*/)){
+  if(!_rawIf( ifType, "trigger", name)) return false;
+  if(strcmp(_value, "on")==0) cb(TRIGGER_ON);
+  else cb(TRIGGER_OFF);
+}
+bool SimpleMQTT::_ifContact(MQTT_IF ifType, const char* name, void (*cb)(MQTT_contact /*value*/)){
+  if(!_rawIf( ifType, "contact", name)) return false;
+  if(strcmp(_value, "open")==0) cb(CONTACT_OPEN);
+  else if(strcmp(_value, "closed")==0) cb(CONTACT_CLOSED);
+  else return false;
+  return true;
+}
+bool SimpleMQTT::_ifDimmer(MQTT_IF ifType, const char* name, void (*cb)(uint8_t /*value*/)){
+  if(!_rawIf( ifType, "dimmer", name)) return false;
+  cb(toInt(_value));
+  return true;
+}
+bool SimpleMQTT::_ifString(MQTT_IF ifType, const char* name, void (*cb)(const char */*value*/)){
+  if(!_rawIf( ifType, "string", name)) return false;
+  cb(_value);
+  return true;
+}
+bool SimpleMQTT::_ifNumber(MQTT_IF ifType, const char* name, void (*cb)(int /*min*/, int /*max*/, int /*step*/)){
+  if(!_rawIf( ifType, "number", name)) return false;
+  int min,max,step;
+  sscanf(_value,"%d,%d,%d"),&min,&max,&step;
+  cb(min,max,step);
+  return true;
+}
+bool SimpleMQTT::_ifFloat(MQTT_IF ifType, const char* name, void (*cb)(float /*value*/)){
+  if(!_rawIf( ifType, "float", name)) return false;
+  cb(toFloat(_value));
+  return true;
+}
+bool SimpleMQTT::_ifInt(MQTT_IF ifType, const char* name, void (*cb)(int /*value*/)){
+  if(!_rawIf( ifType, "int", name)) return false;
+  cb(toInt(_value));
+  return true;
+}
+bool SimpleMQTT::_ifShutter(MQTT_IF ifType, const char* name, void (*cb)(MQTT_shutter /*value*/)){
+  if(!_rawIf( ifType, "shutter", name)) return false;
+  if(strcmp(_value, "open")==0) cb(SHUTTER_OPEN);
+  else if(strcmp(_value, "close")==0) cb(SHUTTER_OPEN);
+  else if(strcmp(_value, "stop")==0) cb(SHUTTER_OPEN);
+  else return false;
+  return true;
+}
+bool SimpleMQTT::_ifCounter(MQTT_IF ifType, const char* name, void (*cb)(int /*value*/)){
+  if(!_rawIf( ifType, "counter", name)) return false;
+  cb(toInt(_value));
+  return true;
+}
+
+
+
 bool SimpleMQTT::_counter(Mqtt_cmd cmd, const char* name, int value){
   char v[20];
   snprintf(v,sizeof(v),"%d", value);
@@ -195,11 +287,7 @@ const char* SimpleMQTT::getBuffer() {
   return buffer;
 }
 
-void SimpleMQTT::handleSubscribeAndGetEvents(void (cb)(const char *, const char*)) {
-  subscribeCallBack = cb;
-}
-
-void SimpleMQTT::handlePublishEvents(void (cb)(const char *, const char*)) {
+void SimpleMQTT::handleEvents(void (cb)(const char *, const char*)) {
   publishCallBack = cb;
 }
 
@@ -241,11 +329,12 @@ void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
 
       for (char* subscribed_topic : topicVector) {
         if (strcmp(subscribed_topic, topic) == 0) {
-          if (subscribeSequance) {
-            subscribeCallBack(topic, value);
-          } else {
+            this->_topic = topic;
+            this->_value = value;
             publishCallBack(topic, value);
-          }
+            this->_topic = NULL;
+            this->_value = NULL;
+
           if (replyId) {
             //Reply/Ack requested
             send("ACK", 4, replyId);

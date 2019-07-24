@@ -27,6 +27,11 @@ typedef enum {
   SHUTTER_STOP
 } MQTT_shutter;
 
+typedef enum {
+  SET,
+  VALUE
+} MQTT_IF;
+
 class SimpleMQTT {
     public:
         SimpleMQTT(int ttl, const char *myDeviceName);
@@ -40,8 +45,7 @@ class SimpleMQTT {
         void parse(const unsigned char *data, int size, uint32_t replyId, bool subscribeSequance=false);
         const char* getBuffer();
 
-        void handleSubscribeAndGetEvents(void (*cb)(const char *, const char*));
-        void handlePublishEvents(void (*cb)(const char *, const char*));
+        void handleEvents(void (*cb)(const char *, const char*));
 
         bool compareTopic(const char* topic, const char* deviceName, const char* t);
 
@@ -58,13 +62,25 @@ class SimpleMQTT {
         bool _shutter(Mqtt_cmd cmd, const char* name, MQTT_shutter value=SHUTTER_OPEN);
         bool _counter(Mqtt_cmd cmd, const char* name, int value=0);
 
+
+        bool _ifSwitch(MQTT_IF ifType, const char* name, void (*cb)(MQTT_switch /*value*/));
+        bool _ifTemp(MQTT_IF ifType, const char* name, void (*cb)(float /*value*/));
+        bool _ifHumidity(MQTT_IF ifType, const char* name, void (*cb)(float /*value*/));
+        bool _ifTrigger(MQTT_IF ifType, const char* name, void (*cb)(MQTT_trigger /*value*/));
+        bool _ifContact(MQTT_IF ifType, const char* name, void (*cb)(MQTT_contact /*value*/));
+        bool _ifDimmer(MQTT_IF ifType, const char* name, void (*cb)(uint8_t /*value*/));
+        bool _ifString(MQTT_IF ifType, const char* name, void (*cb)(const char */*value*/));
+        bool _ifNumber(MQTT_IF ifType, const char* name, void (*cb)(int /*min*/, int /*max*/, int /*step*/));
+        bool _ifFloat(MQTT_IF ifType, const char* name, void (*cb)(float /*value*/));
+        bool _ifInt(MQTT_IF ifType, const char* name, void (*cb)(int /*value*/));
+        bool _ifShutter(MQTT_IF ifType, const char* name, void (*cb)(MQTT_shutter /*value*/));
+        bool _ifCounter(MQTT_IF ifType, const char* name, void (*cb)(int /*value*/));
     private:
         String myDeviceName;
         char buffer[250];
         uint32_t replyId;
         bool _raw(Mqtt_cmd cmd, const char* type, const char* name, const char *value);
-
-        void (*subscribeCallBack)(const char *topic, const char* value);
+        bool _rawIf(MQTT_IF ifType,const char* type, const char* name);
         void (*publishCallBack)(const char *topic, const char* value);
 
         void parse2(const char *c,int l, bool subscribeSequance);
@@ -74,5 +90,8 @@ class SimpleMQTT {
         void addtopicToVector(const char *topic);
         void removeTopicFomVector(const char *topic);
         int ttl;
+
+        const char *_topic;
+        const char* _value;
 };
 #endif
