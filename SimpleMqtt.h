@@ -61,6 +61,7 @@ class SimpleMQTT {
         bool _int(Mqtt_cmd cmd, const char* name, int value=0);
         bool _shutter(Mqtt_cmd cmd, const char* name, MQTT_shutter value=SHUTTER_OPEN);
         bool _counter(Mqtt_cmd cmd, const char* name, int value=0);
+        bool _bin(Mqtt_cmd cmd,  const char* name, const uint8_t* data=0, int len=0);
 
 
         bool _ifSwitch(MQTT_IF ifType, const char* name, void (*cb)(MQTT_switch /*value*/));
@@ -75,6 +76,7 @@ class SimpleMQTT {
         bool _ifInt(MQTT_IF ifType, const char* name, void (*cb)(int /*value*/));
         bool _ifShutter(MQTT_IF ifType, const char* name, void (*cb)(MQTT_shutter /*value*/));
         bool _ifCounter(MQTT_IF ifType, const char* name, void (*cb)(int /*value*/));
+        bool _ifBin(MQTT_IF ifType, const char* name, void (*cb)(const uint8_t */*bin*/,int /*length*/));
     private:
         String myDeviceName;
         char buffer[250];

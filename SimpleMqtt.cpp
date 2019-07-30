@@ -1,6 +1,7 @@
 #include"SimpleMqtt.h"
 #include<Arduino.h>
 #include <EspNowFloodingMesh.h>
+#include "base64.h"
 
 SimpleMQTT::SimpleMQTT(int ttl, const char *deviceName) {
   buffer[0] = 0;
@@ -145,7 +146,16 @@ bool SimpleMQTT::_shutter(Mqtt_cmd cmd, const char* name, MQTT_shutter value){
    }
    return false;
 }
-
+bool SimpleMQTT::_bin(Mqtt_cmd cmd,  const char* name, const uint8_t* data, int len) {
+  if(data!=NULL){
+    char b[250];
+    if(!toBase64(b, sizeof(b), data, len)){
+      return false;
+    }
+    return _raw(cmd, "bin", name, buffer);
+  }
+  return _raw(cmd, "bin", name, NULL);
+}
 
 float toFloat(const char* v) {
   float ret;
@@ -234,7 +244,15 @@ bool SimpleMQTT::_ifCounter(MQTT_IF ifType, const char* name, void (*cb)(int /*v
   cb(toInt(_value));
   return true;
 }
-
+bool SimpleMQTT::_ifBin(MQTT_IF ifType, const char* name, void (*cb)(const uint8_t */*bin*/,int /*length*/)){
+  if(!_rawIf( ifType, "bin", name)) return false;
+  else {
+    uint8_t b[250];
+    int len = fromBase64(b, sizeof(b), _value);
+    cb(b, len);
+    return true;
+  }
+}
 
 
 bool SimpleMQTT::_counter(Mqtt_cmd cmd, const char* name, int value){
