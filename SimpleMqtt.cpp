@@ -109,7 +109,7 @@ bool SimpleMQTT::_humidity(Mqtt_cmd cmd, const char* name, float value){
   return _raw(cmd, "humidity", name, v);
 }
 bool SimpleMQTT::_trigger(Mqtt_cmd cmd, const char* name, MQTT_trigger value){
-  return _raw(cmd, "trigger", name, value==TRIGGER_ON?"on":"off");
+  return _raw(cmd, "trigger", name, "triggered");
 }
 bool SimpleMQTT::_contact(Mqtt_cmd cmd, const char* name, MQTT_contact value){
    _raw(cmd, "contact", name, value==CONTACT_OPEN?"open":"closed");
@@ -194,8 +194,7 @@ bool SimpleMQTT::_ifHumidity(MQTT_IF ifType, const char* name, void (*cb)(float 
 }
 bool SimpleMQTT::_ifTrigger(MQTT_IF ifType, const char* name, void (*cb)(MQTT_trigger /*value*/)){
   if(!_rawIf( ifType, "trigger", name)) return false;
-  if(strcmp(_value, "on")==0) cb(TRIGGER_ON);
-  else cb(TRIGGER_OFF);
+  cb(TRIGGERED);
 }
 bool SimpleMQTT::_ifContact(MQTT_IF ifType, const char* name, void (*cb)(MQTT_contact /*value*/)){
   if(!_rawIf( ifType, "contact", name)) return false;

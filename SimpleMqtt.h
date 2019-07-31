@@ -14,8 +14,7 @@ typedef enum {
   SWITCH_OFF
 } MQTT_switch;
 typedef enum {
-  TRIGGER_ON,
-  TRIGGER_OFF
+  TRIGGERED
 } MQTT_trigger;
 typedef enum {
   CONTACT_OPEN,
@@ -52,7 +51,7 @@ class SimpleMQTT {
         bool _switch(Mqtt_cmd cmd, const char* name, MQTT_switch value=SWITCH_ON);
         bool _temp(Mqtt_cmd cmd, const char* name, float value=0);
         bool _humidity(Mqtt_cmd cmd, const char* name, float value=0);
-        bool _trigger(Mqtt_cmd cmd, const char* name, MQTT_trigger value=TRIGGER_ON);
+        bool _trigger(Mqtt_cmd cmd, const char* name, MQTT_trigger value=TRIGGERED);
         bool _contact(Mqtt_cmd cmd, const char* name, MQTT_contact value=CONTACT_OPEN);
         bool _dimmer(Mqtt_cmd cmd, const char* name, uint8_t value=0);
         bool _string(Mqtt_cmd cmd, const char* name, const char *value=NULL);
