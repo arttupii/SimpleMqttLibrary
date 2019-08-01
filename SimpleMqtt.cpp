@@ -35,6 +35,12 @@ bool SimpleMQTT::subscribeTopic(const char* devName, const char *valName) {
   return ret;
 }
 
+bool SimpleMQTT::listenTopic(const char* devName, const char *valName){
+  char *p = buffer;
+  snprintf(buffer, sizeof(buffer), "%s%s", devName, valName);
+  addtopicToVector(buffer);
+}
+
 bool SimpleMQTT::getTopic(const char* devName, const char *valName) {
   snprintf(buffer, sizeof(buffer), "MQTT %s\nG:%s%s\n", myDeviceName.c_str(), devName, valName);
 

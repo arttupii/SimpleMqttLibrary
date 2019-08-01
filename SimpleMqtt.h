@@ -39,6 +39,7 @@ class SimpleMQTT {
 
         bool getTopic(const char* devName, const char *valName);
         bool subscribeTopic(const char* devName, const char *valName);
+        bool listenTopic(const char* devName, const char *valName); //Listen topics without subscribing
         bool unsubscribeTopic(const char* devName, const char *valName);
 
         void parse(const unsigned char *data, int size, uint32_t replyId, bool subscribeSequance=false);
