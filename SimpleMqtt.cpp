@@ -334,7 +334,7 @@ bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
 }
 
 void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
-  if (c[0] == 'P' && c[1] == ':') { //publish
+  if (l>4&&c[0] == 'P' && c[1] == ':') { //publish
     char topic[100];
     char value[100];
     int i = 2;
