@@ -28,7 +28,8 @@ typedef enum {
 
 typedef enum {
   SET,
-  VALUE
+  VALUE,
+  EITHER
 } MQTT_IF;
 
 class SimpleMQTT {
@@ -43,7 +44,6 @@ class SimpleMQTT {
         bool unsubscribeTopic(const char* devName, const char *valName);
 
         void parse(const unsigned char *data, int size, uint32_t replyId, bool subscribeSequance=false);
-        const char* getBuffer();
 
         void handleEvents(void (*cb)(const char *, const char*));
 
@@ -63,6 +63,20 @@ class SimpleMQTT {
         bool _counter(Mqtt_cmd cmd, const char* name, int value=0);
         bool _bin(Mqtt_cmd cmd,  const char* name, const uint8_t* data=0, int len=0);
 
+        bool _switch(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_switch value=SWITCH_ON);
+        bool _temp(Mqtt_cmd cmd, const std::list<const char*> & names, float value=0);
+        bool _humidity(Mqtt_cmd cmd, const std::list<const char*> & names, float value=0);
+        bool _trigger(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_trigger value=TRIGGERED);
+        bool _contact(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_contact value=CONTACT_OPEN);
+        bool _dimmer(Mqtt_cmd cmd, const std::list<const char*> & names, uint8_t value=0);
+        bool _string(Mqtt_cmd cmd, const std::list<const char*> & names, const char *value=NULL);
+        bool _number(Mqtt_cmd cmd, const std::list<const char*> & names, int min=0, int max=0, int step=0);
+        bool _float(Mqtt_cmd cmd, const std::list<const char*> & names, float value=0);
+        bool _int(Mqtt_cmd cmd, const std::list<const char*> & names, int value=0);
+        bool _shutter(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_shutter value=SHUTTER_OPEN);
+        bool _counter(Mqtt_cmd cmd, const std::list<const char*> & names, int value=0);
+        bool _bin(Mqtt_cmd cmd,  const std::list<const char*> & names, const uint8_t* data=0, int len=0);
+
 
         bool _ifSwitch(MQTT_IF ifType, const char* name, void (*cb)(MQTT_switch /*value*/));
         bool _ifTemp(MQTT_IF ifType, const char* name, void (*cb)(float /*value*/));
@@ -81,12 +95,13 @@ class SimpleMQTT {
         String myDeviceName;
         char buffer[250];
         uint32_t replyId;
-        bool _raw(Mqtt_cmd cmd, const char* type, const char* name, const char *value);
+        bool _raw(Mqtt_cmd cmd, const char* type, const std::list<const char*> & names, const char *value);
         bool _rawIf(MQTT_IF ifType,const char* type, const char* name);
         void (*publishCallBack)(const char *topic, const char* value);
 
         void parse2(const char *c,int l, bool subscribeSequance);
         bool send(const char *mqttMsg, int len, uint32_t replyId);
+        bool compare(MQTT_IF ifType, const char* type, const char* name);
 
         std::list<char*> topicVector;
         void addtopicToVector(const char *topic);

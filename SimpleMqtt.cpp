@@ -63,105 +63,178 @@ bool SimpleMQTT::unsubscribeTopic(const char* devName, const char *valName) {
   return ret;
 }
 
-bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const char* name, const char *value){
+bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char*> & names, const char *value){
   char *p = buffer;
-  bool addToVector=false;
+
   bool removeFromVector=false;
-  if(cmd==SUBSCRIBE){
-    p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\nS:%s/%s/%s/set\n", myDeviceName.c_str(), myDeviceName.c_str(),type, name);
-    p += snprintf(p, sizeof(buffer)-(p-buffer), "G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
-    addToVector = true;
-  } else if(cmd==UNSUBSCRIBE){
-    p += snprintf(p, sizeof(buffer)-(p-buffer),"MQTT %s\nU:%s/%s/%s/set\n", myDeviceName.c_str(), myDeviceName.c_str(),type, name);
-    removeFromVector = true;
+  const char * name = names.front();
+
+  bool addToVector=false;
+  bool ret = true;
+  p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
+
+  int c = 0;
+  for (auto const& name : names) {
+    if(c>=2) {
+      if(!send(buffer, (int)(p - buffer) + 1, 0)) {
+        ret = false;
+      }
+      c=0;
+      p = buffer;
+      p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
+    }
+
+    if(cmd==SUBSCRIBE){
+      p += snprintf(p, sizeof(buffer)-(p-buffer), "S:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
+      p += snprintf(p, sizeof(buffer)-(p-buffer), "G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
+      addToVector = true;
+    } else if(cmd==UNSUBSCRIBE){
+      p += snprintf(p, sizeof(buffer)-(p-buffer),"U:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
+      removeFromVector = true;
+    }
+    else if(cmd==GET){
+      p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
+      p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/set\n", myDeviceName.c_str(), type,name);
+      addToVector = true;
+    }
+    else if(cmd==PUBLISH){
+      p += snprintf(p, sizeof(buffer)-(p-buffer),"P:%s/%s/%s/value %s\n", myDeviceName.c_str(), type, name, value);
+    } else {
+      return false;
+    }
+    c++;
   }
-  else if(cmd==GET){
-    p += snprintf(p, sizeof(buffer)-(p-buffer),"MQTT %s\nG:%s/%s/%s/value\n", myDeviceName.c_str(), myDeviceName.c_str(), type, name);
-    p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/set\n", myDeviceName.c_str(), type,name);
-    addToVector = true;
+
+  if(!send(buffer, (int)(p - buffer) + 1, 0)) {
+      ret=false;
   }
-  else if(cmd==PUBLISH){
-    p += snprintf(p, sizeof(buffer)-(p-buffer),"MQTT %s\nP:%s/%s/%s/value %s\n", myDeviceName.c_str(), myDeviceName.c_str(), type, name, value);
-  } else {
-    return false;
-  }
-  bool ret = send(buffer, (int)(p - buffer) + 1, 0);
+
   if(addToVector) {
-    snprintf(buffer, sizeof(buffer), "%s/%s/%s/set", myDeviceName.c_str(), type, name);
-    addtopicToVector(buffer);
-    snprintf(buffer, sizeof(buffer), "%s/%s/%s/value", myDeviceName.c_str(), type, name);
-    addtopicToVector(buffer);
+    for (auto const& name : names) {
+      snprintf(buffer, sizeof(buffer), "%s/%s/%s/set", myDeviceName.c_str(), type, name);
+      addtopicToVector(buffer);
+      snprintf(buffer, sizeof(buffer), "%s/%s/%s/value", myDeviceName.c_str(), type, name);
+      addtopicToVector(buffer);
+    }
   }
   if(removeFromVector) {
-    snprintf(buffer, sizeof(buffer), "%s/%s/%s/set", myDeviceName.c_str(), type, name);
-    removeTopicFomVector(buffer);
-    snprintf(buffer, sizeof(buffer), "%s/%s/%s/value", myDeviceName.c_str(), type, name);
-    removeTopicFomVector(buffer);
+    for (auto const& name : names) {
+      snprintf(buffer, sizeof(buffer), "%s/%s/%s/set", myDeviceName.c_str(), type, name);
+      removeTopicFomVector(buffer);
+      snprintf(buffer, sizeof(buffer), "%s/%s/%s/value", myDeviceName.c_str(), type, name);
+      removeTopicFomVector(buffer);
+    }
   }
   return ret;
 }
 
-bool SimpleMQTT::_switch(Mqtt_cmd cmd, const char* name, MQTT_switch value){
-  return _raw(cmd, "switch", name, value==SWITCH_ON?"on":"off");
+bool SimpleMQTT::_switch(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_switch value){
+  return _raw(cmd, "switch", names, value==SWITCH_ON?"on":"off");
 }
-bool SimpleMQTT::_temp(Mqtt_cmd cmd, const char* name, float value){
+bool SimpleMQTT::_temp(Mqtt_cmd cmd, const std::list<const char*> & names, float value){
   char v[20];
   snprintf(v,sizeof(v),"%f", value);
-  return _raw(cmd, "temp", name, v);
+  return _raw(cmd, "temp", names, v);
 }
-bool SimpleMQTT::_humidity(Mqtt_cmd cmd, const char* name, float value){
+bool SimpleMQTT::_humidity(Mqtt_cmd cmd, const std::list<const char*> & names, float value){
   char v[20];
   snprintf(v,sizeof(v),"%f", value);
-  return _raw(cmd, "humidity", name, v);
+  return _raw(cmd, "humidity", names, v);
 }
-bool SimpleMQTT::_trigger(Mqtt_cmd cmd, const char* name, MQTT_trigger value){
-  return _raw(cmd, "trigger", name, "triggered");
+bool SimpleMQTT::_trigger(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_trigger value){
+  return _raw(cmd, "trigger", names, "triggered");
 }
-bool SimpleMQTT::_contact(Mqtt_cmd cmd, const char* name, MQTT_contact value){
-   _raw(cmd, "contact", name, value==CONTACT_OPEN?"open":"closed");
+bool SimpleMQTT::_contact(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_contact value){
+   _raw(cmd, "contact", names, value==CONTACT_OPEN?"open":"closed");
 }
-bool SimpleMQTT::_dimmer(Mqtt_cmd cmd, const char* name, uint8_t value){
+bool SimpleMQTT::_dimmer(Mqtt_cmd cmd, const std::list<const char*> & names, uint8_t value){
   char v[20];
   snprintf(v,sizeof(v),"%d", value);
-  return _raw(cmd, "dimmer", name, v);
+  return _raw(cmd, "dimmer", names, v);
 }
-bool SimpleMQTT::_string(Mqtt_cmd cmd, const char* name, const char *value){
-  return _raw(cmd, "string", name, value);
+bool SimpleMQTT::_string(Mqtt_cmd cmd, const std::list<const char*> & names, const char *value){
+  return _raw(cmd, "string", names, value);
 }
-bool SimpleMQTT::_number(Mqtt_cmd cmd, const char* name, int min, int max, int step){
+bool SimpleMQTT::_number(Mqtt_cmd cmd, const std::list<const char*> & names, int min, int max, int step){
   char v[50];
   snprintf(v,sizeof(v),"%d,%d,%d", min,max,step);
-  return _raw(cmd, "number", name, v);
+  return _raw(cmd, "number", names, v);
 }
-bool SimpleMQTT::_float(Mqtt_cmd cmd, const char* name, float value){
+bool SimpleMQTT::_float(Mqtt_cmd cmd, const std::list<const char*> & names, float value){
   char v[20];
   snprintf(v,sizeof(v),"%f", value);
-  return _raw(cmd, "float", name, v);
+  return _raw(cmd, "float", names, v);
 }
-bool SimpleMQTT::_int(Mqtt_cmd cmd, const char* name, int value){
+bool SimpleMQTT::_int(Mqtt_cmd cmd, const std::list<const char*> & names, int value){
   char v[20];
   snprintf(v,sizeof(v),"%d", value);
-  return _raw(cmd, "int", name, v);
+  return _raw(cmd, "int", names, v);
 }
-bool SimpleMQTT::_shutter(Mqtt_cmd cmd, const char* name, MQTT_shutter value){
+bool SimpleMQTT::_shutter(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_shutter value){
   const char *type="shutter";
    switch (value) {
-     case SHUTTER_OPEN: return _raw(cmd, type, name, "open");
-     case SHUTTER_CLOSE: return _raw(cmd, type, name, "close");
-     case SHUTTER_STOP: return _raw(cmd, type, name, "stop");
+     case SHUTTER_OPEN: return _raw(cmd, type, names, "open");
+     case SHUTTER_CLOSE: return _raw(cmd, type, names, "close");
+     case SHUTTER_STOP: return _raw(cmd, type, names, "stop");
    }
    return false;
 }
-bool SimpleMQTT::_bin(Mqtt_cmd cmd,  const char* name, const uint8_t* data, int len) {
+bool SimpleMQTT::_bin(Mqtt_cmd cmd,  const std::list<const char*> & names, const uint8_t* data, int len) {
   if(data!=NULL){
     char b[250];
     if(!toBase64(b, sizeof(b), data, len)){
       return false;
     }
-    return _raw(cmd, "bin", name, buffer);
+    return _raw(cmd, "bin", names, b);
   }
-  return _raw(cmd, "bin", name, NULL);
+  return _raw(cmd, "bin", names, NULL);
 }
+bool SimpleMQTT::_counter(Mqtt_cmd cmd, const std::list<const char*> & names, int value){
+  char v[20];
+  snprintf(v,sizeof(v),"%d", value);
+  return _raw(cmd, "counter", names, v);
+}
+/********************************************************************************************************/
+
+bool SimpleMQTT::_switch(Mqtt_cmd cmd, const char* name, MQTT_switch value){
+  return _switch(cmd, {name}, value);
+}
+bool SimpleMQTT::_temp(Mqtt_cmd cmd, const char* name, float value){
+return _temp(cmd, {name}, value);
+}
+bool SimpleMQTT::_humidity(Mqtt_cmd cmd, const char* name, float value){
+return _humidity(cmd, {name}, value);
+}
+bool SimpleMQTT::_trigger(Mqtt_cmd cmd, const char* name, MQTT_trigger value){
+return _trigger(cmd, {name}, value);
+}
+bool SimpleMQTT::_contact(Mqtt_cmd cmd, const char* name, MQTT_contact value){
+return _contact(cmd, {name}, value);}
+bool SimpleMQTT::_dimmer(Mqtt_cmd cmd, const char* name, uint8_t value){
+return _dimmer(cmd, {name}, value);
+}
+bool SimpleMQTT::_string(Mqtt_cmd cmd, const char* name, const char *value){
+return _string(cmd, {name}, value);
+}
+bool SimpleMQTT::_number(Mqtt_cmd cmd, const char* name, int min, int max, int step){
+return _number(cmd, {name}, min,max,step);
+}
+bool SimpleMQTT::_float(Mqtt_cmd cmd, const char* name, float value){
+return _float(cmd, {name}, value);
+}
+bool SimpleMQTT::_int(Mqtt_cmd cmd, const char* name, int value){
+return _int(cmd, {name}, value);
+}
+bool SimpleMQTT::_shutter(Mqtt_cmd cmd, const char* name, MQTT_shutter value){
+return _shutter(cmd, {name}, value);
+}
+bool SimpleMQTT::_bin(Mqtt_cmd cmd,  const char* name, const uint8_t* data, int len) {
+return _bin(cmd, {name}, data,len);
+}
+bool SimpleMQTT::_counter(Mqtt_cmd cmd, const char* name, int value){
+  return _counter(cmd, {name}, value);
+}
+/********************************************************************************************************/
 
 float toFloat(const char* v) {
   float ret;
@@ -174,13 +247,21 @@ int toInt(const char* v) {
   return ret;
 }
 
-bool SimpleMQTT::_rawIf(MQTT_IF ifType, const char* type, const char* name){
+bool SimpleMQTT::compare(MQTT_IF ifType, const char* type, const char* name) {
   if(ifType==SET) {
     snprintf(buffer, sizeof(buffer), "%s/%s/%s/set", myDeviceName.c_str(), type, name);
   } else { //VALUE
     snprintf(buffer, sizeof(buffer), "%s/%s/%s/value", myDeviceName.c_str(), type, name);
   }
   return strcmp(_topic, buffer) == 0;
+}
+
+bool SimpleMQTT::_rawIf(MQTT_IF ifType, const char* type, const char* name){
+  if(ifType==SET||ifType==VALUE) {
+    return compare(ifType, type, name);
+  } else {
+    return compare(SET, type, name) || compare(VALUE, type, name);
+  }
 }
 
 bool SimpleMQTT::_ifSwitch(MQTT_IF ifType, const char* name, void (*cb)(MQTT_switch /*value*/)){
@@ -260,11 +341,7 @@ bool SimpleMQTT::_ifBin(MQTT_IF ifType, const char* name, void (*cb)(const uint8
 }
 
 
-bool SimpleMQTT::_counter(Mqtt_cmd cmd, const char* name, int value){
-  char v[20];
-  snprintf(v,sizeof(v),"%d", value);
-  return _raw(cmd, "counter", name, v);
-}
+
 
 void SimpleMQTT::addtopicToVector(const char *topic) {
   for (char* subscribed_topic : topicVector) {
@@ -304,10 +381,6 @@ void SimpleMQTT::parse(const unsigned char *data, int size, uint32_t replyId, bo
       }
     }
   }
-}
-
-const char* SimpleMQTT::getBuffer() {
-  return buffer;
 }
 
 void SimpleMQTT::handleEvents(void (cb)(const char *, const char*)) {
