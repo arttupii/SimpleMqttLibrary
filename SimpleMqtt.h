@@ -106,6 +106,9 @@ class SimpleMQTT {
         std::list<char*> topicVector;
         void addtopicToVector(const char *topic);
         void removeTopicFomVector(const char *topic);
+
+        const char* decompressTopic(const char*topic);
+
         int ttl;
 
         const char *_topic;

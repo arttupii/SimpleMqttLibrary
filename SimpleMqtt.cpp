@@ -74,31 +74,55 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
   p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
 
   int c = 0;
+  bool first = true;
   for (auto const& name : names) {
     if(c>=2) {
       if(!send(buffer, (int)(p - buffer) + 1, 0)) {
         ret = false;
       }
       c=0;
+      first=true;
       p = buffer;
       p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
     }
 
-    if(cmd==SUBSCRIBE){
-      p += snprintf(p, sizeof(buffer)-(p-buffer), "S:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
-      p += snprintf(p, sizeof(buffer)-(p-buffer), "G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
+    if(cmd==SUBSCRIBE) {
+      if(first) {
+        p += snprintf(p, sizeof(buffer)-(p-buffer), "S:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
+        p += snprintf(p, sizeof(buffer)-(p-buffer), "G:.../value\n", myDeviceName.c_str(), type, name);
+        first = false;
+      } else {
+        p += snprintf(p, sizeof(buffer)-(p-buffer), "S:../%s/set\n", name);
+        p += snprintf(p, sizeof(buffer)-(p-buffer), "G:.../value\n");
+      }
       addToVector = true;
-    } else if(cmd==UNSUBSCRIBE){
-      p += snprintf(p, sizeof(buffer)-(p-buffer),"U:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
+    } else if(cmd==UNSUBSCRIBE) {
+      if(first) {
+        p += snprintf(p, sizeof(buffer)-(p-buffer),"U:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
+        first=false;
+      } else {
+        p += snprintf(p, sizeof(buffer)-(p-buffer),"U:../%s/set\n", name);
+      }
       removeFromVector = true;
     }
     else if(cmd==GET){
-      p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
-      p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/set\n", myDeviceName.c_str(), type,name);
+      if(first) {
+        p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
+        p += snprintf(p, sizeof(buffer)-(p-buffer),"G:.../set\n");
+        first=false;
+      } else {
+        p += snprintf(p, sizeof(buffer)-(p-buffer),"G:../%s/value\n", name);
+        p += snprintf(p, sizeof(buffer)-(p-buffer),"G:.../set\n", myDeviceName.c_str(), type,name);
+      }
       addToVector = true;
     }
     else if(cmd==PUBLISH){
+      if(first) {
       p += snprintf(p, sizeof(buffer)-(p-buffer),"P:%s/%s/%s/value %s\n", myDeviceName.c_str(), type, name, value);
+      first=false;
+      } else {
+        p += snprintf(p, sizeof(buffer)-(p-buffer),"P:../%s/value %s\n", name, value);
+      }
     } else {
       return false;
     }
@@ -367,7 +391,7 @@ void SimpleMQTT::removeTopicFomVector(const char *topic) {
 
 void SimpleMQTT::parse(const unsigned char *data, int size, uint32_t replyId, bool subscribeSequance) {
   this->replyId = replyId;
-  if (data[0] == 'M' && data[1] == 'Q' && data[2] == 'T' && data[3] == 'T' && (data[4] == '\n'||data[4] == ' ')) {
+  if ( size>5 &&data[0] == 'M' && data[1] == 'Q' && data[2] == 'T' && data[3] == 'T' && (data[4] == '\n'||data[4] == ' ')) {
     int i = 0;
     int s = 0;
     Serial.println((const char*)data);
@@ -406,6 +430,33 @@ bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
   }
 }
 
+const char* SimpleMQTT::decompressTopic(const char*topic) {
+  static char t[100]={0};
+  static char b[100];
+  if(topic[0]!='.') {
+      memcpy(t,topic,strlen(topic)+2);
+      return t;
+  }
+  int c = 0;
+  for(c=0;c<strlen(topic)&&topic[c]=='.';c++);
+
+  int index=0;
+  for(int i=0;i<strlen(t);i++) {
+     if(t[i]=='/') {
+          index++;
+          if(index==c) {
+              index=i;
+              break;
+          }
+      }
+  }
+  memcpy(b,t,index);
+  memcpy(b+index, topic+c, strlen(topic)+1);
+  memcpy(t,b,strlen(b)+1);
+  return b;
+}
+
+
 void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
   if (l>4&&c[0] == 'P' && c[1] == ':') { //publish
     char topic[100];
@@ -423,11 +474,13 @@ void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
       memcpy(value, c + i + 1, l - i);
       value[l - i - 1] = 0;
 
+      const char *decompressedTopic = decompressTopic(topic);
+
       for (char* subscribed_topic : topicVector) {
-        if (strcmp(subscribed_topic, topic) == 0) {
-            this->_topic = topic;
+        if (strcmp(subscribed_topic, decompressedTopic) == 0) {
+            this->_topic = decompressedTopic;
             this->_value = value;
-            publishCallBack(topic, value);
+            publishCallBack(decompressedTopic, value);
             this->_topic = NULL;
             this->_value = NULL;
 
