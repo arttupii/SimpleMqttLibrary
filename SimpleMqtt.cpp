@@ -2,6 +2,7 @@
 #include<Arduino.h>
 #include <EspNowFloodingMesh.h>
 #include "base64.h"
+#include <safememcpy.h>
 
 SimpleMQTT::SimpleMQTT(int ttl, const char *deviceName) {
   buffer[0] = 0;
@@ -434,7 +435,7 @@ const char* SimpleMQTT::decompressTopic(const char*topic) {
   static char t[100]={0};
   static char b[100];
   if(topic[0]!='.') {
-      memcpy(t,topic,strlen(topic)+2);
+      memcpyS(t,sizeof(t),topic,strlen(topic)+2);
       return t;
   }
   int c = 0;
@@ -450,9 +451,9 @@ const char* SimpleMQTT::decompressTopic(const char*topic) {
           }
       }
   }
-  memcpy(b,t,index);
-  memcpy(b+index, topic+c, strlen(topic)+1);
-  memcpy(t,b,strlen(b)+1);
+  memcpyS(b,sizeof(b),t,index);
+  memcpyS(b+index,sizeof(t)-index, topic+c, strlen(topic)+1);
+  memcpyS(t,sizeof(t),b,strlen(b)+1);
   return b;
 }
 
@@ -469,9 +470,9 @@ void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
         Serial.println(l);
         return;
       };
-      memcpy(topic, c + 2, l - 2);
+      memcpyS(topic,sizeof(topic), c + 2, l - 2);
       topic[i - 2] = 0;
-      memcpy(value, c + i + 1, l - i);
+      memcpyS(value, sizeof(value),c + i + 1, l - i);
       value[l - i - 1] = 0;
 
       const char *decompressedTopic = decompressTopic(topic);
