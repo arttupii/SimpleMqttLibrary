@@ -31,3 +31,29 @@ G:device1/led/value
 P:device1/led/value on
 "
 ```
+#### Multiple MQTT commands in the same message
+```
+"MQTT myDeviceName"
+G:device1/switch/led/value
+S:device1/switch/led/set
+G:device1/switch/led1/value
+S:device1/switch/led1/set
+G:device1/temp/dallas1/value
+G:device1/temp/dallas2/value
+G:device2/switch/led/value
+S:device2/switch/led/set
+"
+```
+##### "Compressed" message
+```
+"MQTT myDeviceName"
+G:device1/switch/led/value     -->Topic is device1/switch/led/value
+S:.../set                      -->Topic is device1/switch/led/set
+G:../led1/value                -->Topic is device1/switch/led1/value
+S:.../set                      -->Topic is device1/switch/led1/set
+G:./temp/dallas1/value         -->Topic is device1/temp/dallas1/value
+G:../dallas2/value             -->Topic is device1/temp/dallas2/value
+G:device2/switch/led/value     -->Topic is device2/switch/led/value
+S:.../set                      -->Topic is device2/switch/led/set
+"
+```
