@@ -72,19 +72,22 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
 
   bool addToVector=false;
   bool ret = true;
-  p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
+
 
   int c = 0;
   bool first = true;
+  p = buffer;
+  p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
+
   for (auto const& name : names) {
-    if(c>=2) {
+    if(c>2) {
       if(!send(buffer, (int)(p - buffer) + 1, 0)) {
-        ret = false;
+              ret=false;
       }
-      c=0;
-      first=true;
       p = buffer;
       p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
+      c=0;
+      first=true;
     }
 
     if(cmd==SUBSCRIBE) {
@@ -129,11 +132,9 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
     }
     c++;
   }
-
   if(!send(buffer, (int)(p - buffer) + 1, 0)) {
       ret=false;
   }
-
   if(addToVector) {
     for (auto const& name : names) {
       snprintf(buffer, sizeof(buffer), "%s/%s/%s/set", myDeviceName.c_str(), type, name);
@@ -222,42 +223,56 @@ bool SimpleMQTT::_counter(Mqtt_cmd cmd, const std::list<const char*> & names, in
 /********************************************************************************************************/
 
 bool SimpleMQTT::_switch(Mqtt_cmd cmd, const char* name, MQTT_switch value){
-  return _switch(cmd, {name}, value);
+    std::list<const char*> t= {name};
+  return _switch(cmd, t, value);
 }
 bool SimpleMQTT::_temp(Mqtt_cmd cmd, const char* name, float value){
-return _temp(cmd, {name}, value);
+    std::list<const char*> t= {name};
+return _temp(cmd, t, value);
 }
 bool SimpleMQTT::_humidity(Mqtt_cmd cmd, const char* name, float value){
-return _humidity(cmd, {name}, value);
+    std::list<const char*> t= {name};
+return _humidity(cmd, t, value);
 }
+
 bool SimpleMQTT::_trigger(Mqtt_cmd cmd, const char* name, MQTT_trigger value){
-return _trigger(cmd, {name}, value);
+  std::list<const char*> t= {name};
+  return _trigger(cmd, t, value);
 }
 bool SimpleMQTT::_contact(Mqtt_cmd cmd, const char* name, MQTT_contact value){
-return _contact(cmd, {name}, value);}
+    std::list<const char*> t= {name};
+return _contact(cmd, t, value);}
 bool SimpleMQTT::_dimmer(Mqtt_cmd cmd, const char* name, uint8_t value){
-return _dimmer(cmd, {name}, value);
+    std::list<const char*> t= {name};
+return _dimmer(cmd, t, value);
 }
 bool SimpleMQTT::_string(Mqtt_cmd cmd, const char* name, const char *value){
-return _string(cmd, {name}, value);
+    std::list<const char*> t= {name};
+return _string(cmd, t, value);
 }
 bool SimpleMQTT::_number(Mqtt_cmd cmd, const char* name, int min, int max, int step){
-return _number(cmd, {name}, min,max,step);
+    std::list<const char*> t= {name};
+return _number(cmd, t, min,max,step);
 }
 bool SimpleMQTT::_float(Mqtt_cmd cmd, const char* name, float value){
-return _float(cmd, {name}, value);
+    std::list<const char*> t= {name};
+return _float(cmd, t, value);
 }
 bool SimpleMQTT::_int(Mqtt_cmd cmd, const char* name, int value){
-return _int(cmd, {name}, value);
+    std::list<const char*> t= {name};
+return _int(cmd, t, value);
 }
 bool SimpleMQTT::_shutter(Mqtt_cmd cmd, const char* name, MQTT_shutter value){
-return _shutter(cmd, {name}, value);
+    std::list<const char*> t= {name};
+return _shutter(cmd, t, value);
 }
 bool SimpleMQTT::_bin(Mqtt_cmd cmd,  const char* name, const uint8_t* data, int len) {
-return _bin(cmd, {name}, data,len);
+    std::list<const char*> t= {name};
+return _bin(cmd, t, data,len);
 }
 bool SimpleMQTT::_counter(Mqtt_cmd cmd, const char* name, int value){
-  return _counter(cmd, {name}, value);
+    std::list<const char*> t= {name};
+  return _counter(cmd, t, value);
 }
 /********************************************************************************************************/
 
@@ -395,6 +410,7 @@ void SimpleMQTT::parse(const unsigned char *data, int size, uint32_t replyId, bo
   if ( size>5 &&data[0] == 'M' && data[1] == 'Q' && data[2] == 'T' && data[3] == 'T' && (data[4] == '\n'||data[4] == ' ')) {
     int i = 0;
     int s = 0;
+    Serial.print("PARSE:");
     Serial.println((const char*)data);
     while (i < size) {
       for (; i < size; i++) {
@@ -414,6 +430,11 @@ void SimpleMQTT::handleEvents(void (cb)(const char *, const char*)) {
 
 bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
   static SimpleMQTT *myself = this;
+  Serial.print("Send:\"");
+  Serial.print(mqttMsg);
+  Serial.println("\"");
+
+
   if (replyId == 0) {
     bool status = espNowFloodingMesh_sendAndWaitReply((uint8_t*)mqttMsg, len, ttl, 3, [](const uint8_t *data, int size) {
       if (size > 0) {
@@ -474,9 +495,7 @@ void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
       topic[i - 2] = 0;
       memcpyS(value, sizeof(value),c + i + 1, l - i);
       value[l - i - 1] = 0;
-
       const char *decompressedTopic = decompressTopic(topic);
-
       for (char* subscribed_topic : topicVector) {
         if (strcmp(subscribed_topic, decompressedTopic) == 0) {
             this->_topic = decompressedTopic;
@@ -484,7 +503,6 @@ void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
             publishCallBack(decompressedTopic, value);
             this->_topic = NULL;
             this->_value = NULL;
-
           if (replyId) {
             //Reply/Ack requested
             send("ACK", 4, replyId);
