@@ -8,6 +8,12 @@ SimpleMQTT::SimpleMQTT(int ttl, const char *deviceName) {
   buffer[0] = 0;
   this->ttl = ttl;
   myDeviceName = deviceName;
+  static SimpleMQTT *myself = this;
+  espNowFloodingMesh_RecvCB([](const uint8_t *data, int len, uint32_t replyPrt) {
+    if (len > 0) {
+      myself->parse(data, len, replyPrt); //Parse simple Mqtt protocol messages
+    }
+  });
 }
 
 SimpleMQTT::~SimpleMQTT() {
@@ -82,7 +88,7 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
   for (auto const& name : names) {
     if(c>2) {
       if(!send(buffer, (int)(p - buffer) + 1, 0)) {
-              ret=false;
+        ret=false;
       }
       p = buffer;
       p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
