@@ -1,7 +1,7 @@
 {
   "name": "SimpleMqttLibrary",
   "version": "0.0.1",
-  "keywords": "MQTT Fooling Mesh"
+  "keywords": "MQTT Fooling Mesh",
   "description": "Simple MQTT  library",
   "examples": "examples/*/*.ino",
   "repository": {
