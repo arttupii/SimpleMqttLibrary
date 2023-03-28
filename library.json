@@ -6,7 +6,7 @@
   "examples": "examples/*/*.ino",
   "repository": {
     "type": "git",
-    "url": "https://github.com/arttupii/SimpleMqttLibrary"
+    "url": "https://github.com/JoostAB/SimpleMqttLibrary"
   },
   "authors": [
     {
