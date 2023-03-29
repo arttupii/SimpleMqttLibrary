@@ -93,6 +93,8 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
     }
 
     if(cmd==SUBSCRIBE) {
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wformat-extra-args"
       if(first) {
         p += snprintf(p, sizeof(buffer)-(p-buffer), "S:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
         p += snprintf(p, sizeof(buffer)-(p-buffer), "G:.../value\n", myDeviceName.c_str(), type, name);
@@ -101,6 +103,7 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
         p += snprintf(p, sizeof(buffer)-(p-buffer), "S:../%s/set\n", name);
         p += snprintf(p, sizeof(buffer)-(p-buffer), "G:.../value\n");
       }
+      #pragma GCC diagnostic pop
       addToVector = true;
     } else if(cmd==UNSUBSCRIBE) {
       if(first) {
@@ -112,6 +115,8 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
       removeFromVector = true;
     }
     else if(cmd==GET){
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wformat-extra-args"
       if(first) {
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:.../set\n");
@@ -120,6 +125,7 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:../%s/value\n", name);
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:.../set\n", myDeviceName.c_str(), type,name);
       }
+      #pragma GCC diagnostic pop
       addToVector = true;
     }
     else if(cmd==PUBLISH){
