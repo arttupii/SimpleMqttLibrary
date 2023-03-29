@@ -43,7 +43,6 @@ bool SimpleMQTT::subscribeTopic(const char* devName, const char *valName) {
 }
 
 bool SimpleMQTT::listenTopic(const char* devName, const char *valName){
-  char *p = buffer;
   snprintf(buffer, sizeof(buffer), "%s%s", devName, valName);
   addtopicToVector(buffer);
   return true;
@@ -73,16 +72,12 @@ bool SimpleMQTT::unsubscribeTopic(const char* devName, const char *valName) {
 
 bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char*> & names, const char *value){
   char *p = buffer;
-
   bool removeFromVector=false;
-  const char * name = names.front();
-
   bool addToVector=false;
   bool ret = true;
-
-
   int c = 0;
   bool first = true;
+
   p = buffer;
   p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
 
@@ -351,7 +346,7 @@ bool SimpleMQTT::_ifString(MQTT_IF ifType, const char* name, void (*cb)(const ch
 bool SimpleMQTT::_ifNumber(MQTT_IF ifType, const char* name, void (*cb)(int /*min*/, int /*max*/, int /*step*/)){
   if(!_rawIf( ifType, "number", name)) return false;
   int min,max,step;
-  sscanf(_value,"%d,%d,%d"),&min,&max,&step;
+  sscanf(_value,"%d,%d,%d",&min,&max,&step);
   cb(min,max,step);
   return true;
 }
@@ -436,7 +431,7 @@ void SimpleMQTT::handleEvents(void (cb)(const char *, const char*)) {
   publishCallBack = cb;
 }
 
-bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
+bool SimpleMQTT::send(const char *mqttMsg, size_t len, uint32_t replyId) {
   static SimpleMQTT *myself = this;
   Serial.print("Send:\"");
   Serial.print(mqttMsg);
@@ -469,11 +464,11 @@ const char* SimpleMQTT::decompressTopic(const char*topic) {
       memcpyS(t,sizeof(t),topic,strlen(topic)+2);
       return t;
   }
-  int c = 0;
+  unsigned int c = 0;
   for(c=0;c<strlen(topic)&&topic[c]=='.';c++);
 
-  int index=0;
-  for(int i=0;i<strlen(t);i++) {
+  unsigned int index=0;
+  for(unsigned int i=0;i<strlen(t);i++) {
      if(t[i]=='/') {
           index++;
           if(index==c) {
@@ -489,11 +484,11 @@ const char* SimpleMQTT::decompressTopic(const char*topic) {
 }
 
 
-void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
+void SimpleMQTT::parse2(const char *c, size_t l, bool subscribeSequance) {
   if (l>4&&c[0] == 'P' && c[1] == ':') { //publish
     char topic[100];
     char value[100];
-    int i = 2;
+    unsigned int i = 2;
     for (; (i < l) && c[i] != ' '; i++); //find :
     if (i != l) { //found
       if (i > sizeof(topic)) {
