@@ -7,7 +7,7 @@ char toBase64Char(unsigned char v) {
 
 int toBinaryFromBase64(char v) {
     if(v=='=') return -1;
-    for(int i=0;i<sizeof(base64chars);i++){
+    for(unsigned int i=0;i<sizeof(base64chars);i++){
         if(base64chars[i]==v) {
            return i;
         }
