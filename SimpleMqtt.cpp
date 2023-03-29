@@ -46,6 +46,7 @@ bool SimpleMQTT::listenTopic(const char* devName, const char *valName){
   char *p = buffer;
   snprintf(buffer, sizeof(buffer), "%s%s", devName, valName);
   addtopicToVector(buffer);
+  return true;
 }
 
 bool SimpleMQTT::getTopic(const char* devName, const char *valName) {
@@ -177,7 +178,7 @@ bool SimpleMQTT::_trigger(Mqtt_cmd cmd, const std::list<const char*> & names, MQ
   return _raw(cmd, "trigger", names, "triggered");
 }
 bool SimpleMQTT::_contact(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_contact value){
-   _raw(cmd, "contact", names, value==CONTACT_OPEN?"open":"closed");
+   return _raw(cmd, "contact", names, value==CONTACT_OPEN?"open":"closed");
 }
 bool SimpleMQTT::_dimmer(Mqtt_cmd cmd, const std::list<const char*> & names, uint8_t value){
   char v[20];
@@ -328,6 +329,7 @@ bool SimpleMQTT::_ifHumidity(MQTT_IF ifType, const char* name, void (*cb)(float 
 bool SimpleMQTT::_ifTrigger(MQTT_IF ifType, const char* name, void (*cb)(MQTT_trigger /*value*/)){
   if(!_rawIf( ifType, "trigger", name)) return false;
   cb(TRIGGERED);
+  return true;
 }
 bool SimpleMQTT::_ifContact(MQTT_IF ifType, const char* name, void (*cb)(MQTT_contact /*value*/)){
   if(!_rawIf( ifType, "contact", name)) return false;
@@ -456,6 +458,8 @@ bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
   } else {
     espNowFloodingMesh_sendReply((uint8_t*)mqttMsg, len, ttl, replyId);
   }
+  
+  return true;
 }
 
 const char* SimpleMQTT::decompressTopic(const char*topic) {
