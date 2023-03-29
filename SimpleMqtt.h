@@ -99,8 +99,8 @@ class SimpleMQTT {
         bool _rawIf(MQTT_IF ifType,const char* type, const char* name);
         void (*publishCallBack)(const char *topic, const char* value);
 
-        void parse2(const char *c,int l, bool subscribeSequance);
-        bool send(const char *mqttMsg, int len, uint32_t replyId);
+        void parse2(const char *c,size_t l, bool subscribeSequance);
+        bool send(const char *mqttMsg, size_t len, uint32_t replyId);
         bool compare(MQTT_IF ifType, const char* type, const char* name);
 
         std::list<char*> topicVector;
