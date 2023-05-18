@@ -43,9 +43,9 @@ bool SimpleMQTT::subscribeTopic(const char* devName, const char *valName) {
 }
 
 bool SimpleMQTT::listenTopic(const char* devName, const char *valName){
-  char *p = buffer;
   snprintf(buffer, sizeof(buffer), "%s%s", devName, valName);
   addtopicToVector(buffer);
+  return true;
 }
 
 bool SimpleMQTT::getTopic(const char* devName, const char *valName) {
@@ -72,16 +72,12 @@ bool SimpleMQTT::unsubscribeTopic(const char* devName, const char *valName) {
 
 bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char*> & names, const char *value){
   char *p = buffer;
-
   bool removeFromVector=false;
-  const char * name = names.front();
-
   bool addToVector=false;
   bool ret = true;
-
-
   int c = 0;
   bool first = true;
+
   p = buffer;
   p += snprintf(p, sizeof(buffer)-(p-buffer), "MQTT %s\n",  myDeviceName.c_str());
 
@@ -97,6 +93,8 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
     }
 
     if(cmd==SUBSCRIBE) {
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wformat-extra-args"
       if(first) {
         p += snprintf(p, sizeof(buffer)-(p-buffer), "S:%s/%s/%s/set\n", myDeviceName.c_str(),type, name);
         p += snprintf(p, sizeof(buffer)-(p-buffer), "G:.../value\n", myDeviceName.c_str(), type, name);
@@ -105,6 +103,7 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
         p += snprintf(p, sizeof(buffer)-(p-buffer), "S:../%s/set\n", name);
         p += snprintf(p, sizeof(buffer)-(p-buffer), "G:.../value\n");
       }
+      #pragma GCC diagnostic pop
       addToVector = true;
     } else if(cmd==UNSUBSCRIBE) {
       if(first) {
@@ -116,6 +115,8 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
       removeFromVector = true;
     }
     else if(cmd==GET){
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wformat-extra-args"
       if(first) {
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:%s/%s/%s/value\n", myDeviceName.c_str(), type, name);
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:.../set\n");
@@ -124,6 +125,7 @@ bool SimpleMQTT::_raw(Mqtt_cmd cmd, const char* type, const std::list<const char
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:../%s/value\n", name);
         p += snprintf(p, sizeof(buffer)-(p-buffer),"G:.../set\n", myDeviceName.c_str(), type,name);
       }
+      #pragma GCC diagnostic pop
       addToVector = true;
     }
     else if(cmd==PUBLISH){
@@ -177,7 +179,7 @@ bool SimpleMQTT::_trigger(Mqtt_cmd cmd, const std::list<const char*> & names, MQ
   return _raw(cmd, "trigger", names, "triggered");
 }
 bool SimpleMQTT::_contact(Mqtt_cmd cmd, const std::list<const char*> & names, MQTT_contact value){
-   _raw(cmd, "contact", names, value==CONTACT_OPEN?"open":"closed");
+   return _raw(cmd, "contact", names, value==CONTACT_OPEN?"open":"closed");
 }
 bool SimpleMQTT::_dimmer(Mqtt_cmd cmd, const std::list<const char*> & names, uint8_t value){
   char v[20];
@@ -328,6 +330,7 @@ bool SimpleMQTT::_ifHumidity(MQTT_IF ifType, const char* name, void (*cb)(float 
 bool SimpleMQTT::_ifTrigger(MQTT_IF ifType, const char* name, void (*cb)(MQTT_trigger /*value*/)){
   if(!_rawIf( ifType, "trigger", name)) return false;
   cb(TRIGGERED);
+  return true;
 }
 bool SimpleMQTT::_ifContact(MQTT_IF ifType, const char* name, void (*cb)(MQTT_contact /*value*/)){
   if(!_rawIf( ifType, "contact", name)) return false;
@@ -349,7 +352,7 @@ bool SimpleMQTT::_ifString(MQTT_IF ifType, const char* name, void (*cb)(const ch
 bool SimpleMQTT::_ifNumber(MQTT_IF ifType, const char* name, void (*cb)(int /*min*/, int /*max*/, int /*step*/)){
   if(!_rawIf( ifType, "number", name)) return false;
   int min,max,step;
-  sscanf(_value,"%d,%d,%d"),&min,&max,&step;
+  sscanf(_value,"%d,%d,%d",&min,&max,&step);
   cb(min,max,step);
   return true;
 }
@@ -434,7 +437,7 @@ void SimpleMQTT::handleEvents(void (cb)(const char *, const char*)) {
   publishCallBack = cb;
 }
 
-bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
+bool SimpleMQTT::send(const char *mqttMsg, size_t len, uint32_t replyId) {
   static SimpleMQTT *myself = this;
   Serial.print("Send:\"");
   Serial.print(mqttMsg);
@@ -456,6 +459,8 @@ bool SimpleMQTT::send(const char *mqttMsg, int len, uint32_t replyId) {
   } else {
     espNowFloodingMesh_sendReply((uint8_t*)mqttMsg, len, ttl, replyId);
   }
+  
+  return true;
 }
 
 const char* SimpleMQTT::decompressTopic(const char*topic) {
@@ -465,11 +470,11 @@ const char* SimpleMQTT::decompressTopic(const char*topic) {
       memcpyS(t,sizeof(t),topic,strlen(topic)+2);
       return t;
   }
-  int c = 0;
+  unsigned int c = 0;
   for(c=0;c<strlen(topic)&&topic[c]=='.';c++);
 
-  int index=0;
-  for(int i=0;i<strlen(t);i++) {
+  unsigned int index=0;
+  for(unsigned int i=0;i<strlen(t);i++) {
      if(t[i]=='/') {
           index++;
           if(index==c) {
@@ -485,11 +490,11 @@ const char* SimpleMQTT::decompressTopic(const char*topic) {
 }
 
 
-void SimpleMQTT::parse2(const char *c, int l, bool subscribeSequance) {
+void SimpleMQTT::parse2(const char *c, size_t l, bool subscribeSequance) {
   if (l>4&&c[0] == 'P' && c[1] == ':') { //publish
     char topic[100];
     char value[100];
-    int i = 2;
+    unsigned int i = 2;
     for (; (i < l) && c[i] != ' '; i++); //find :
     if (i != l) { //found
       if (i > sizeof(topic)) {
